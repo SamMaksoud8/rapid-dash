@@ -49,8 +49,8 @@ class ExampleDashboard(Dashboard):
     h1_title='Dash Tabs component demo'
     tabs_value = "tabs-example-graph"
     div_id='tabs-content-example-graph'
-    tabs=[dt.ExampleTabA,dt.ExampleTabB]
-    starting_value = dt.ExampleTabA.value
+    tabs=[dt.ExampleTabA,dt.ExampleTabB,dt.ExampleDropDownTab]
+    starting_value = dt.ExampleDropDownTab.value
     
     def __init__(self):
         Dashboard.__init__(self)
