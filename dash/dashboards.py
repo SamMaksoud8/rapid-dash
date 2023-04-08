@@ -5,8 +5,6 @@ import pandas as pd
 import dash_tabs as dt
 import datetime
 
-
-
 class Dashboard:
     h1_title = None
     tabs_value = None

@@ -180,7 +180,7 @@ class ExampleDropDownTab(DropDownTab):
         return px.line(dff, x=cls.x_value, y=cls.y_value)
     
 class ExampleTableTab(CallbackTab):
-    label='Overview'
+    label='Example Data Table'
     value='tab-1-example-dataframe'
     tab_child = dcc.Tab(label=label, value=value)
     table_columns=['State',
@@ -222,9 +222,12 @@ class MultiTab(CallbackTab):
         self.tab = html.Div(className='row', children=children)
 
 class ExampleMultiTab(MultiTab):
-    label='Example Data Table graph'
+    label='Overview'
     value='tab-1-example-table-graph'
     tab_child = dcc.Tab(label=label, value=value)
-    tab_list = [ExampleTableTab,ExampleScatterTab,ExampleBarTab,ExampleScatterLineTab,ExampleDropDownTab]
+    #tab_list = [ExampleTableTab,ExampleScatterTab,ExampleBarTab,ExampleScatterLineTab,ExampleDropDownTab]
+    tab_list = [ExampleTableTab,ExampleScatterTab,
+                ExampleBarTab,ExampleScatterLineTab,
+                ExampleDropDownTab]
     def __init__(self):
         super().__init__(self.tab_list)
