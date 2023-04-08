@@ -19,7 +19,6 @@ class CallbackTab:
     tab_child=None
     
     def __init__(self):
-        print('reinit')
         self.label=self.__class__.label
         self.value=self.__class__.value
         self.tab_child=self.__class__.tab_child
@@ -111,7 +110,6 @@ class ExampleTabA(CallbackTab):
         self.generate_tab()
         
     def data_loader(self):
-        print("reloading from data loader",self.__class__.__name__)
         return pd.read_csv(DATA_DIR / "data.csv")
 
 class ExampleTabB(CallbackTab):
@@ -121,13 +119,21 @@ class ExampleTabB(CallbackTab):
     
     def __init__(self):
         super().__init__()
-        self.data=[{
-                        'x': [1, 2, 3],
-                        'y': [5, 10, 6],
-                        'type': 'bar'
-                    }]
-        self.graph=dp.Graph(id=self.label,data=self.data,x_title="yo yo",y_title="no no",top_margin=80).plot
+        self.load_data()
+        self.load_graph()
         self.generate_tab()
+
+    def data_loader(self):
+        import plotly.express as px
+        print("reloading from data loader",self.__class__.__name__)
+        df = px.data.iris()
+        data = [dp.ScatterPlot(df,x_name="sepal_width",y_name="sepal_length")]
+        return data
+    
+    def load_graph(self):
+        self.graph = dp.Graph(id=self.label,
+                        data=self.cached_data,
+                        top_margin=80).plot
 
 class ExampleDropDownTab(DropDownTab):
     label='Example Drop Down'
@@ -149,14 +155,10 @@ class ExampleDropDownTab(DropDownTab):
     def data_loader(self):
         print("reloading from data loader",self.__class__.__name__)
         return pd.read_csv(DATA_DIR / "drop_data.csv")
-        
-    @callback(
-    Output('graph-content', 'figure'), #Graph id as figure output
-    Input('dropdown-selection', 'value') #Dropdown id as input
-    )
-    def update_graph(value: str) -> px.line:
+    
+    @staticmethod
+    def update_graph(cls,value):
         # Create a function that updates the graph based on the dropdown value
-        cls=ExampleDropDownTab
         options_column = cls.options_column
         df=cache[cls.label]
         dff = df[df[options_column]==value]

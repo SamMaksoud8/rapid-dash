@@ -5,21 +5,12 @@ import pandas as pd
 
 
 class SubPlot:
-    plot_type=None
-    mode=None
-    marker={'color': 'blue',
-                    'size': 5,
-                    'opacity': 0.6,
-                    'symbol': 'circle'}
-    
-    line={'color': 'blue'}
-    
     def __init__(self,df,x_name,y_name):
         self.df=df
         self.x_name = x_name
         self.y_name = y_name
         self.plot_name = y_name
-
+        self.plot_type=None
     
     @property
     def x_values(self):
@@ -30,16 +21,10 @@ class SubPlot:
         return self.df[self.y_name]
     
     def generic_plot(self):
-        """
-        https://plotly.com/python/reference/
-        """
         self.plot = {
                         'x': self.x_values,
                         'y': self.y_values,
-                        'type': self.plot_type,
-                        'mode': self.mode,
-                        'marker': self.marker,
-                        'line': self.line,
+                        'type': self.plot_type
                     }
 
 
@@ -48,12 +33,12 @@ class BarPlot(SubPlot):
         SubPlot.__init__(self,df,x_name,y_name)
         self.plot_type = "bar"
         self.generic_plot()
+        
   
 class ScatterPlot(SubPlot):
-    def __init__(self,df,x_name,y_name,mode="markers"):
-        #mode can be "lines", "markers", "lines+markers". Default is "markers"
+    def __init__(self,df,x_name,y_name):
         SubPlot.__init__(self,df,x_name,y_name)
-        self.mode=mode
+        self.plot_type = "scatter"
         self.generic_plot()
 
 
@@ -127,5 +112,3 @@ class Graph:
             }
         )
 
-
-    

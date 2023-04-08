@@ -5,15 +5,18 @@ import pandas as pd
 import dash_tabs as dt
 import datetime
 
+
+
 class Dashboard:
     h1_title = None
     tabs_value = None
     tabs = [{}]
     starting_tab = None
     div_id = None
-    resync_interval_minutes = 15
+    resync_interval_minutes = 0.01
     n_intervals = 0
     interval_id = 'interval-component'
+    store_id = 'tab-data'
 
     def __init__(self):
         self.h1_title = self.__class__.h1_title
@@ -23,15 +26,18 @@ class Dashboard:
         self.starting_tab = self.__class__.starting_tab
         self.resync_interval_minutes = self.__class__.resync_interval_minutes
         self.n_intervals = self.__class__.n_intervals
+        self.init_store()
         self.set_update_interval()
         self.init_layout()
+    
+    def init_store(self):
+        self.store = dcc.Store(id=self.store_id,data={'n_intervals':0})
 
     @staticmethod
     def get_dynamic_tab_content(cls, active_tab):
         for tab in cls.tabs:
             if tab['tab'].value == active_tab:
                 assert tab['type'] == 'dynamic'
-                print('it updates',active_tab)
                 return tab['tab']().tab
         raise ValueError(f'Tab not found: {active_tab}')
 
@@ -59,7 +65,7 @@ class Dashboard:
             dcc.Tabs(id=self.tabs_value, value=children[0].value,
                      children=children),
             self.interval,
-            dcc.Store(id='tab-data'),
+            self.store,
             html.Div(id=self.div_id)
         ])
     @staticmethod
@@ -83,7 +89,6 @@ class Dashboard:
         for tab_record in self.tabs:
             tab=tab_record['tab']
             children.append(tab.tab_child)
-        
         return children
 
     
@@ -93,13 +98,10 @@ class Dashboard:
                 return cls['tab']
     
     def update_store(self,tab,store,interval):
-        if store is None:
-            store = {'n_intervals':0}
         if tab not in store.keys():
             tab_cls = self.get_tab_cls(tab)
             store[tab]=tab_cls().tab
         if interval>store['n_intervals']:
-            print("it updates",tab)
             tab_cls = self.get_tab_cls(tab)
             store[tab]=tab_cls().tab
             store['n_intervals']=interval
@@ -119,11 +121,11 @@ class ExampleDashboard(Dashboard):
     def __init__(self):
         Dashboard.__init__(self)
 
-
-    @callback(Output('interval-component', 'disabled'),
-                [Input('tabs-example-dash', 'value')],
-                [Input("interval-component", 'n_intervals')])
-    def update_interval(tab,interval):
-        print('this interval',interval)
-        cls=ExampleDashboard
-        return not cls.check_if_tab_dynamic(cls, tab)
+    @callback(
+    Output(dt.ExampleDropDownTab.graph_id, 'figure'), #Graph id as figure output
+    Input(dt.ExampleDropDownTab.dropdown_id, 'value') #Dropdown id as input
+    )
+    def update_graph(value):
+        cls=dt.ExampleDropDownTab
+        return cls.update_graph(cls, value)
+    
