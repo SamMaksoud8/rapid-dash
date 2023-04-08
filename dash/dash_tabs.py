@@ -1,19 +1,25 @@
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import dash_plots as dp
-import dash_tabs as dt
 import os
 from pathlib import Path
 import plotly.express as px
 
 DATA_DIR = Path(os.path.dirname(__file__)) / "data"
-EXAMPLE_DROPDOWN_DF=None 
 
+cache = {
+    'Example Drop Down': None,
+    'Example A':None,
+    }
+
+#Base classes for all tabs
 class CallbackTab:
     label=None
     value=None
     tab_child=None
+    
     def __init__(self):
+        print('reinit')
         self.label=self.__class__.label
         self.value=self.__class__.value
         self.tab_child=self.__class__.tab_child
@@ -26,43 +32,70 @@ class CallbackTab:
             html.H3(self.label),self.graph
         ])     
  
+    @property
+    def cached_data(self):
+        global cache
+        return cache[self.label]
+    
+    def cache(self):
+        global cache
+        cache[self.label]=self.data_loader()
+        
+    def efficent_load_data(self):
+        if self.cached_data is None:
+            self.cache()
+        return self.cached_data
 
+    def load_data(self):
+        self.cache()
+        return self.cached_data
+    
+    @staticmethod
+    def data_loader():
+        raise NotImplementedError("This method must be implemented by the subclass")
+ 
 class DropDownTab(CallbackTab):
     options=None
+    graph_id=None
+    dropdown_id=None
+    start_value=None
+    options_column=None
+    
     def __init__(self):
         CallbackTab.__init__(self)
-        
+        self.graph_id=self.__class__.graph_id
+        self.dropdown_id=self.__class__.dropdown_id
+        self.start_value=self.__class__.start_value
+        self.options_column=self.__class__.options_column
+       
+    @property
+    def options(self):
+        return cache[self.label][self.options_column].unique() 
+
+    @property
+    def dropdown(self):
+        return dcc.Dropdown(self.options, 
+                            self.start_value, 
+                            id=self.dropdown_id)
+    
     def generate_tab(self):
         self.tab = html.Div([
             html.H3(self.label),
             self.dropdown,
-            dcc.Graph(id='graph-content'),
+            dcc.Graph(id=self.graph_id),
             html.Div(id=self.value)
         ])
-        
 
-class ExampleDropDownTab(DropDownTab):
-    label='Example Drop Down'
-    value='tab-3-example-graph'
-    tab_child = dcc.Tab(label=label, value=value)
-    start_value='Canada'
-    
+class DynamicCallbackTab(CallbackTab):
     def __init__(self):
-        DropDownTab.__init__(self)
-        global EXAMPLE_DROPDOWN_DF
-        if EXAMPLE_DROPDOWN_DF is None:
-            EXAMPLE_DROPDOWN_DF=pd.read_csv(DATA_DIR / "drop_data.csv")
-        self.dropdown= dcc.Dropdown(EXAMPLE_DROPDOWN_DF.country.unique(), self.start_value, id='dropdown-selection')
-        self.generate_tab()
-
-    @callback(
-    Output('graph-content', 'figure'),
-    Input('dropdown-selection', 'value')
-    )
-    def update_graph(value):
-        dff = EXAMPLE_DROPDOWN_DF[EXAMPLE_DROPDOWN_DF.country==value]
-        return px.line(dff, x='year', y='pop')
-
+        super().__init__()
+        
+        
+    def generate_tab(self):
+        self.tab = html.Div([
+            html.H3(self.label),self.graph
+        ])
+        
 
 class ExampleTabA(CallbackTab):
     label='Example A'
@@ -70,21 +103,24 @@ class ExampleTabA(CallbackTab):
     tab_child = dcc.Tab(label=label, value=value)
     
     def __init__(self):
-        CallbackTab.__init__(self)
-        df = pd.read_csv(DATA_DIR / "data.csv")
-        self.data=[dp.BarPlot(df,'consensus','price'),
-                   dp.BarPlot(df,'consensus','volume')]
+        super().__init__()
+        self.load_data()
+        self.data=[dp.BarPlot(self.cached_data,'consensus','price'),
+                   dp.BarPlot(self.cached_data,'consensus','volume')]
         self.graph=dp.Graph(id=self.label,data=self.data,top_margin=80).plot
         self.generate_tab()
-
+        
+    def data_loader(self):
+        print("reloading from data loader",self.__class__.__name__)
+        return pd.read_csv(DATA_DIR / "data.csv")
 
 class ExampleTabB(CallbackTab):
     label='Example B'
-    value='tab-example-graph'
+    value='tab-2-example-graph'
     tab_child = dcc.Tab(label=label, value=value)
     
     def __init__(self):
-        dt.CallbackTab.__init__(self)
+        super().__init__()
         self.data=[{
                         'x': [1, 2, 3],
                         'y': [5, 10, 6],
@@ -93,3 +129,35 @@ class ExampleTabB(CallbackTab):
         self.graph=dp.Graph(id=self.label,data=self.data,x_title="yo yo",y_title="no no",top_margin=80).plot
         self.generate_tab()
 
+class ExampleDropDownTab(DropDownTab):
+    label='Example Drop Down'
+    value='tab-3-example-graph'
+    graph_id='graph-content'
+    dropdown_id='dropdown-selection'
+    tab_child = dcc.Tab(label=label, value=value)
+    
+    options_column='country'
+    start_value='Canada'
+    x_value='year'
+    y_value='pop'
+    
+    def __init__(self):
+        super().__init__()
+        self.load_data()
+        self.generate_tab()
+            
+    def data_loader(self):
+        print("reloading from data loader",self.__class__.__name__)
+        return pd.read_csv(DATA_DIR / "drop_data.csv")
+        
+    @callback(
+    Output('graph-content', 'figure'), #Graph id as figure output
+    Input('dropdown-selection', 'value') #Dropdown id as input
+    )
+    def update_graph(value: str) -> px.line:
+        # Create a function that updates the graph based on the dropdown value
+        cls=ExampleDropDownTab
+        options_column = cls.options_column
+        df=cache[cls.label]
+        dff = df[df[options_column]==value]
+        return px.line(dff, x=cls.x_value, y=cls.y_value)
