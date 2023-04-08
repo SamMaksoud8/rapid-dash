@@ -57,6 +57,9 @@ class ScatterPlot(SubPlot):
         self.generic_plot()
 
 
+
+
+
 class Graph:
     def __init__(self,id,data,title=None,x_title=None,y_title=None,left_margin=60,bottom_margin=60,
                     top_margin=10,right_margin=10,x_legend=0,y_legend=1,hovermode="closest"):

@@ -1,0 +1,28 @@
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+
+# Ignore IDE and editor files
+.vscode/
+.idea/
+*.iml
+
+# Ignore local development files and directories
+venv/
+.env
+
+# Ignore build and distribution directories
+dist/
+build/
+*.egg-info/
+
+# Ignore compiled files
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore log and backup files
+*.log
+*.bak
+
+# Ignore any other files that you don't want to commit
