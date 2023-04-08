@@ -8,8 +8,6 @@ import plotly.express as px
 DATA_DIR = Path(os.path.dirname(__file__)) / "data"
 
 cache = {
-    'Example Drop Down': None,
-    'Example A':None,
     }
 
 #Base classes for all tabs
@@ -17,6 +15,7 @@ class CallbackTab:
     label=None
     value=None
     tab_child=None
+    style={'width': '100%'}
     
     def __init__(self):
         self.label=self.__class__.label
@@ -29,11 +28,13 @@ class CallbackTab:
     def generate_tab(self):
         self.tab = html.Div([
             html.H3(self.label),self.graph
-        ])     
+        ], style=self.style)     
  
     @property
     def cached_data(self):
         global cache
+        if self.label not in cache.keys():
+            self.cache()
         return cache[self.label]
     
     def cache(self):
@@ -41,8 +42,6 @@ class CallbackTab:
         cache[self.label]=self.data_loader()
         
     def efficent_load_data(self):
-        if self.cached_data is None:
-            self.cache()
         return self.cached_data
 
     def load_data(self):
@@ -96,8 +95,8 @@ class DynamicCallbackTab(CallbackTab):
         ])
         
 
-class ExampleTabA(CallbackTab):
-    label='Example A'
+class ExampleBarTab(CallbackTab):
+    label='Example Bar Plot'
     value='tab-1-example-graph'
     tab_child = dcc.Tab(label=label, value=value)
     
@@ -112,8 +111,24 @@ class ExampleTabA(CallbackTab):
     def data_loader(self):
         return pd.read_csv(DATA_DIR / "data.csv")
 
-class ExampleTabB(CallbackTab):
-    label='Example B'
+class ExampleScatterLineTab(CallbackTab):
+    label='Example Line Plot'
+    value='tab-1-example-line'
+    tab_child = dcc.Tab(label=label, value=value)
+    
+    def __init__(self):
+        super().__init__()
+        self.load_data()
+        self.data=[dp.ScatterLinePlot(self.cached_data,'date','volume')]
+        self.graph=dp.Graph(id=self.label,data=self.data,top_margin=80).plot
+        self.generate_tab()
+        
+    def data_loader(self):
+        return pd.read_csv(DATA_DIR / "data.csv")
+
+
+class ExampleScatterTab(CallbackTab):
+    label='Example Scatter Plot'
     value='tab-2-example-graph'
     tab_child = dcc.Tab(label=label, value=value)
     
@@ -163,3 +178,53 @@ class ExampleDropDownTab(DropDownTab):
         df=cache[cls.label]
         dff = df[df[options_column]==value]
         return px.line(dff, x=cls.x_value, y=cls.y_value)
+    
+class ExampleTableTab(CallbackTab):
+    label='Overview'
+    value='tab-1-example-dataframe'
+    tab_child = dcc.Tab(label=label, value=value)
+    table_columns=['State',
+                        "Number of Solar Plants",
+                        'Average MW Per Plant',
+                        'Generation (GWh)']
+    
+    def __init__(self):
+        super().__init__()
+        self.load_data()
+        #print(self.cached_data)
+        self.graph=dp.DataTable(self.value,
+                                self.cached_data,
+                                columns=self.table_columns
+                                ).table
+        self.generate_tab()
+        
+    def data_loader(self):
+        return pd.read_csv(DATA_DIR / "example_table.csv")
+    
+class MultiTab(CallbackTab):
+    def __init__(self,tab_list):
+        super().__init__()
+        self.style={'width': '10%'}
+        self.generate_tab(tab_list)
+
+    def flex_row(self,data):
+        if len(data)==1:
+            return html.Div(data)
+        else:
+            return html.Div(data,
+                    style={'display': 'flex', 'flex-direction': 'row','width': '100%'})
+        
+
+    def generate_tab(self,tab_list):
+        data=[i().tab for i in tab_list]
+        chunks = [data[i:i+2] for i in range(0, len(data), 2)]
+        children=[self.flex_row(i) for i in chunks]
+        self.tab = html.Div(className='row', children=children)
+
+class ExampleMultiTab(MultiTab):
+    label='Example Data Table graph'
+    value='tab-1-example-table-graph'
+    tab_child = dcc.Tab(label=label, value=value)
+    tab_list = [ExampleTableTab,ExampleScatterTab,ExampleBarTab,ExampleScatterLineTab,ExampleDropDownTab]
+    def __init__(self):
+        super().__init__(self.tab_list)

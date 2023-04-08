@@ -13,7 +13,7 @@ class Dashboard:
     tabs = [{}]
     starting_tab = None
     div_id = None
-    resync_interval_minutes = 0.01
+    resync_interval_minutes = 15
     n_intervals = 0
     interval_id = 'interval-component'
     store_id = 'tab-data'
@@ -113,9 +113,10 @@ class ExampleDashboard(Dashboard):
     tabs_value = "tabs-example-dash"
     div_id = 'tabs-content-example-dash'
     tabs = [
+        {'tab': dt.ExampleMultiTab,'type':'static'},
         {'tab': dt.ExampleDropDownTab,'type':'dynamic'},
-        {'tab': dt.ExampleTabA,'type':'static'},
-        {'tab': dt.ExampleTabB,'type':'static'}
+        {'tab': dt.ExampleTableTab,'type':'static'},
+        {'tab': dt.ExampleScatterTab,'type':'static'},
     ]
 
     def __init__(self):

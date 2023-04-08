@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html
+from dash import Dash, dcc, html, dash_table
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import pandas as pd
@@ -50,15 +50,43 @@ class BarPlot(SubPlot):
         self.generic_plot()
   
 class ScatterPlot(SubPlot):
-    def __init__(self,df,x_name,y_name,mode="markers"):
-        #mode can be "lines", "markers", "lines+markers". Default is "markers"
+    def __init__(self,df,x_name,y_name):
         SubPlot.__init__(self,df,x_name,y_name)
-        self.mode=mode
+        self.mode="markers"
         self.generic_plot()
 
+class LinePlot(SubPlot):
+    def __init__(self,df,x_name,y_name):
+        SubPlot.__init__(self,df,x_name,y_name)
+        self.mode="lines"
+        self.generic_plot()
 
+class ScatterLinePlot(SubPlot):
+    def __init__(self,df,x_name,y_name):
+        SubPlot.__init__(self,df,x_name,y_name)
+        self.mode="lines+markers"
+        self.generic_plot()
 
+class DataTable:
+    def __init__(self,id,df,columns=[]):
+        self.id=id
+        self.table=self.construct_table(df,columns)
+        
+    def filter_df(self,df,cols):
+        return df if len(cols)==0 else df[cols]
+    
+    @property
+    def plot(self):
+        return self.table
 
+    def construct_table(self,df,cols):
+            df = self.filter_df(df,cols)
+            return dash_table.DataTable(
+                            id=self.id,
+                            columns=[{"name": i, "id": i} for i in df.columns],
+                            data=df.to_dict('records')
+                        )
+        
 
 class Graph:
     def __init__(self,id,data,title=None,x_title=None,y_title=None,left_margin=60,bottom_margin=60,
