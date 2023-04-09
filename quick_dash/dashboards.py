@@ -17,13 +17,6 @@ class Dashboard:
     store_id = 'tab-data'
 
     def __init__(self):
-        self.h1_title = self.__class__.h1_title
-        self.tabs_value = self.__class__.tabs_value
-        self.div_id = self.__class__.div_id
-        self.tabs = self.__class__.tabs
-        self.starting_tab = self.__class__.starting_tab
-        self.resync_interval_minutes = self.__class__.resync_interval_minutes
-        self.n_intervals = self.__class__.n_intervals
         self.init_store()
         self.set_update_interval()
         self.init_layout()

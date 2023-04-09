@@ -16,14 +16,12 @@ class CallbackTab:
     value=None
     tab_child=None
     style={'width': '100%'}
+    data=None
+    graph=None
+    children=[]
     
     def __init__(self):
-        self.label=self.__class__.label
-        self.value=self.__class__.value
-        self.tab_child=self.__class__.tab_child
-        self.data=None
-        self.graph=None
-        self.children=[]
+        pass
     
     def generate_tab(self):
         self.tab = html.Div([
@@ -83,17 +81,6 @@ class DropDownTab(CallbackTab):
             dcc.Graph(id=self.graph_id),
             html.Div(id=self.value)
         ])
-
-class DynamicCallbackTab(CallbackTab):
-    def __init__(self):
-        super().__init__()
-        
-        
-    def generate_tab(self):
-        self.tab = html.Div([
-            html.H3(self.label),self.graph
-        ])
-        
 
 class ExampleBarTab(CallbackTab):
     label='Example Bar Plot'
