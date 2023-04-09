@@ -1,32 +1,23 @@
 from dash import Dash, dcc
 from dash.dependencies import Input, Output,State
-from dashboards import ExampleDashboard
+import dashboards as db
+from typing import Type
 
+def main(cls: Type[db.Dashboard]) -> None:
+    """
+    Runs a Dash application based on the provided `dashboard_cls`.
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+    Parameters:
+    -----------
+    cls : Type[Dashboard]
+        A subclass of `Dashboard` that defines the layout and callbacks for the Dash application.
 
-app = Dash(__name__, 
-           external_stylesheets=external_stylesheets,
-           suppress_callback_exceptions=True)
-
-cls=ExampleDashboard
-dashboard = cls()
-
-app.layout = dashboard.get_layout
-
-@app.callback(Output(cls.interval_id, 'disabled'),
-            [Input(cls.tabs_value, 'value')])
-def update_interval(tab):
-    return not cls.check_if_tab_dynamic(cls, tab)
-
-@app.callback([Output(cls.div_id, 'children'),
-               Output(cls.store_id, 'data')] ,
-            [Input(cls.tabs_value, 'value')],
-            [State(cls.store_id, 'data')],
-            [Input(cls.interval_id, 'n_intervals')])
-def render_content(tab,store,interval):
-    store = dashboard.update_store(tab,store,interval)
-    return store[tab], store
+    Returns:
+    --------
+    None
+    """
+    dashboard=cls()
+    dashboard.run(debug=True, port=8080)
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    main(db.ExampleDashboard)
