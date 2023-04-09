@@ -2,7 +2,7 @@ from dash import Dash, html, dcc, callback, Output, Input, State
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import pandas as pd
-import dash_tabs as dt
+import custom_tabs as ct
 import datetime
 
 class Dashboard:
@@ -27,9 +27,9 @@ class Dashboard:
     @staticmethod
     def get_dynamic_tab_content(cls, active_tab):
         for tab in cls.tabs:
-            if tab['tab'].value == active_tab:
-                assert tab['type'] == 'dynamic'
-                return tab['tab']().tab
+            if tab.value == active_tab:
+                assert tab.sync_type == 'dynamic'
+                return tab().tab
         raise ValueError(f'Tab not found: {active_tab}')
 
     @staticmethod
@@ -59,39 +59,36 @@ class Dashboard:
             self.store,
             html.Div(id=self.div_id)
         ])
-    @staticmethod
-    def get_dynamic_tabs(tabs):
-        return [tab for tab in tabs if tab['type'] == 'dynamic']
-    
-    @staticmethod
-    def get_dynamic_tab_values(tabs):
-        return [tab['tab'] for tab in tabs if tab['type'] == 'dynamic']
+
+
     
     @staticmethod
     def check_if_tab_dynamic(cls,active_tab):
-        dynamic_tabs = cls.get_dynamic_tab_values(cls.tabs)
-        for dyanmic_tab in dynamic_tabs:
-            if active_tab == dyanmic_tab.value:
-                return True
+        for tab in cls.tabs:
+            if tab.sync_type == 'dynamic':
+                if active_tab == tab.value:
+                    return True
         return False
 
     def get_tabs(self):
         children = []
-        for tab_record in self.tabs:
-            tab=tab_record['tab']
-            children.append(tab.tab_child)
+        for tab in self.tabs:
+            children.append(dcc.Tab(label=tab.label, value=tab.value))
         return children
 
     
     def get_tab_cls(self,tab):
         for cls in self.tabs:
-            if tab == cls['tab'].value:
-                return cls['tab']
+            if tab == cls.value:
+                return cls
     
     def update_store(self,tab,store,interval):
         if tab not in store.keys():
+            print(store.keys())
             tab_cls = self.get_tab_cls(tab)
             store[tab]=tab_cls().tab
+        else:
+            print('saved time',tab)
         if interval>store['n_intervals']:
             tab_cls = self.get_tab_cls(tab)
             store[tab]=tab_cls().tab
@@ -103,21 +100,19 @@ class ExampleDashboard(Dashboard):
     h1_title = 'Dash Tabs component demo'
     tabs_value = "tabs-example-dash"
     div_id = 'tabs-content-example-dash'
-    tabs = [
-        {'tab': dt.ExampleMultiTab,'type':'static'},
-        {'tab': dt.ExampleDropDownTab,'type':'dynamic'},
-        {'tab': dt.ExampleTableTab,'type':'static'},
-        {'tab': dt.ExampleScatterTab,'type':'static'},
-    ]
+    tabs = [ct.ExampleMultiTab,
+            ct.ExampleDropDownTab,
+            ct.ExampleTableTab,
+            ct.ExampleScatterTab]
 
     def __init__(self):
         Dashboard.__init__(self)
 
     @callback(
-    Output(dt.ExampleDropDownTab.graph_id, 'figure'), #Graph id as figure output
-    Input(dt.ExampleDropDownTab.dropdown_id, 'value') #Dropdown id as input
+    Output(ct.ExampleDropDownTab.graph_id, 'figure'), #Graph id as figure output
+    Input(ct.ExampleDropDownTab.dropdown_id, 'value') #Dropdown id as input
     )
     def update_graph(value):
-        cls=dt.ExampleDropDownTab
+        cls=ct.ExampleDropDownTab
         return cls.update_graph(cls, value)
     
