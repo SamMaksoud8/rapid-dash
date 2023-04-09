@@ -1,3 +1,5 @@
+""" This module contains the classes for creating the dashboards."""
+
 from dash import Dash, html, dcc, callback, Output, Input, State
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
@@ -205,7 +207,72 @@ class Dashboard:
 
         return store
 
+    def run(self, debug: bool = False, port: int = 8080) -> None:
+        """
+        Start the dashboard application.
 
+        Parameters:
+        -----------
+        debug : bool, optional
+            If True, enable debug mode, which will display error messages in the browser. Default is False.
+        port : int, optional
+            The port number to run the server on. Default is 8080.
+
+        Returns:
+        --------
+        None
+        """
+        app = Dash(__name__,
+                external_stylesheets=external_stylesheets,
+                suppress_callback_exceptions=True)
+        
+        app.layout = self.get_layout
+
+        @app.callback(Output(self.interval_id, 'disabled'),
+                    [Input(self.tabs_value, 'value')])
+        def update_interval(tab: str) -> bool:
+            """
+            Update the `disabled` property of the `Interval` component.
+
+            Parameters:
+            -----------
+            tab : str
+                The ID of the currently active tab.
+
+            Returns:
+            --------
+            bool
+                True if the tab is dynamic, False otherwise.
+            """
+            return not self.check_if_tab_dynamic(self, tab)
+
+        @app.callback([Output(self.div_id, 'children'),
+                    Output(self.store_id, 'data')],
+                    [Input(self.tabs_value, 'value')],
+                    [State(self.store_id, 'data')],
+                    [Input(self.interval_id, 'n_intervals')])
+        def render_content(tab: str, store: dict, interval: int) -> tuple:
+            """
+            Update the data store and render the content of the selected tab.
+
+            Parameters:
+            -----------
+            tab : str
+                The ID of the currently active tab.
+            store : dict
+                The current data stored in the `Store` component.
+            interval : int
+                The number of times the `Interval` component has triggered since the app started.
+
+            Returns:
+            --------
+            tuple
+                A tuple containing the rendered content and the updated data for the `Store` component.
+            """
+            store = self.update_store(tab, store, interval)
+            return store[tab], store
+
+        app.run_server(debug=debug, port=port)
 
 
 class ExampleDashboard(Dashboard):
@@ -250,26 +317,4 @@ class ExampleDashboard(Dashboard):
         cls = ct.ExampleDropDownTab
         return cls.update_graph(cls, value)
 
-
-    def run(self,debug=False,port=8080) -> None:
-        app = Dash(__name__, 
-                external_stylesheets=external_stylesheets,
-                suppress_callback_exceptions=True)
-
-        app.layout = self.get_layout
-
-        @app.callback(Output(self.interval_id, 'disabled'),
-                    [Input(self.tabs_value, 'value')])
-        def update_interval(tab):
-            return not self.check_if_tab_dynamic(self, tab)
-
-        @app.callback([Output(self.div_id, 'children'),
-                    Output(self.store_id, 'data')] ,
-                    [Input(self.tabs_value, 'value')],
-                    [State(self.store_id, 'data')],
-                    [Input(self.interval_id, 'n_intervals')])
-        def render_content(tab,store,interval):
-            store = self.update_store(tab,store,interval)
-            return store[tab], store
-        app.run_server(debug=debug,port=port)
         

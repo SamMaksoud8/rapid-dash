@@ -1,3 +1,5 @@
+""" A module for running a dashboard application. """
+
 from dash import Dash, dcc
 from dash.dependencies import Input, Output,State
 import dashboards as db

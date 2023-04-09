@@ -1,3 +1,7 @@
+"""_
+This module contains the classes for creating the tabs for the dashboard.
+"""
+
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import dash_plots as dp
