@@ -1,5 +1,4 @@
-""" This module contains the classes for creating the dashboards."""
-
+""" This module contains the base classes for creating dashboards."""
 from dash import Dash, html, dcc, callback, Output, Input, State
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
@@ -274,47 +273,3 @@ class Dashboard:
 
         app.run_server(debug=debug, port=port)
 
-
-class ExampleDashboard(Dashboard):
-    """
-    A dashboard class that demonstrates the use of Dash Tabs component with various types of tabs,
-    including multi-tab, dropdown-tab, table-tab, and scatter-tab.
-
-    Attributes:
-        h1_title (str): The title of the dashboard displayed in a H1 HTML element.
-        tabs_value (str): The ID of the Tabs component.
-        div_id (str): The ID of the HTML div element where the tab content is displayed.
-        tabs (list): A list of tab classes to be included in the dashboard.
-    """
-
-    h1_title = 'Dash Tabs component demo'
-    tabs_value = "tabs-example-dash"
-    div_id = 'tabs-content-example-dash'
-    tabs = [ct.ExampleMultiTab,
-            ct.ExampleDropDownTab,
-            ct.ExampleTableTab,
-            ct.ExampleScatterTab]
-
-    def __init__(self)-> None:
-        Dashboard.__init__(self)
-
-    @callback(
-        # Graph id as figure output
-        Output(ct.ExampleDropDownTab.graph_id, 'figure'),
-        Input(ct.ExampleDropDownTab.dropdown_id,
-              'value')  # Dropdown id as input
-    )
-    def update_graph(value: str) -> go._figure.Figure:
-        """
-        Update the graph displayed in ct.ExampleDropDownTab with the selected value from the dropdown.
-
-        Args:
-            value (str): The selected value from the dropdown.
-
-        Returns:
-            plotly.graph_objs._figure.Figure: A Plotly figure object representing the updated graph.
-        """
-        cls = ct.ExampleDropDownTab
-        return cls.update_graph(cls, value)
-
-        
