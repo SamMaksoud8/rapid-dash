@@ -31,7 +31,7 @@ class ExampleDashboard(Dashboard):
             ct.ExampleScatterTab]
 
     def __init__(self)-> None:
-        Dashboard.__init__(self)
+        super().__init__()
 
 
 class ExampleDropDownDashboard(Dashboard):

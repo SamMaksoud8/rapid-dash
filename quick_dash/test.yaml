@@ -1,0 +1,23 @@
+title: Dashboard Demo
+tabs:
+  - type: chart
+    label: Example Bar Plot
+    csv_path: "./data/data.csv"
+    chart_type: bar
+    graph_columns:
+      - x: consensus
+        y: price
+      - x: consensus
+        y: volume
+
+  - type: chart
+    label: Example Scatter Line Plot
+    csv_path: "./data/data.csv"
+    chart_type: scatter+line
+    graph_columns:
+      - x: date
+        y: price
+      - x: date
+        y: volume
+    
+    

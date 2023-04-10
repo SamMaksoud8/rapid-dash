@@ -4,70 +4,55 @@ import dash_plots as dp
 import os
 from pathlib import Path
 import plotly.express as px
-from dash_tabs import CallbackTab,DropDownTab,MultiTab
+from dash_tabs import DashboardTab,DropDownTab,MultiTab,TableTab
+import pathlib
+from typing import Type,Union,Dict,List,Any,Callable,Optional
 
 DATA_DIR = Path(os.path.dirname(__file__)) / "data"
 
 
-class ExampleBarTab(CallbackTab):
-    label='Example Bar Plot' 
-    value='tab-1-example-graph' 
-    csv_path=DATA_DIR / "data.csv"
-    graph_columns =[
-            {'x':'consensus','y':'price'},
-            {'x':'consensus','y':'volume'}
+class ExampleBarTab(DashboardTab):
+    label: str = 'Example Bar Plot'
+    value: str = 'tab-1-example-graph'
+    csv_path: Union[str, Path] = DATA_DIR / "data.csv"
+    plot_function: Callable = dp.BarPlot
+    graph_columns: List[Dict[str, str]] = [
+            {'x':'consensus', 'y':'price'},
+            {'x':'consensus', 'y':'volume'}
             ]
     
-    plot_function=dp.BarPlot
     
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self.init_graph()
-        self.generate_tab()
         
 
-    
-    def init_graph(self):
-        graph_data=[]
-        if isinstance(self.graph_columns,dict):
-            self.graph_columns=[self.graph_columns]
-        for column in self.graph_columns:
-            graph_data.append(self.plot_function(self.data,column['x'],column['y']))
-        self.graph=dp.Graph(id=self.label,data=graph_data,top_margin=self.top_margin).plot
         
 
-class ExampleScatterLineTab(CallbackTab):
+class ExampleScatterLineTab(DashboardTab):
     label='Example Line Plot'
     value='tab-1-example-line'
     csv_path=DATA_DIR / "data.csv"
+    plot_function: Callable = dp.ScatterLinePlot
+    graph_columns={'x':'date', 'y':'volume'}
     
     def __init__(self):
         super().__init__()
-        self.graph_data=[dp.ScatterLinePlot(self.data,'date','volume')]
-        self.graph=dp.Graph(id=self.label,data=self.graph_data,top_margin=80).plot
-        self.generate_tab()
+        
 
-
-class ExampleScatterTab(CallbackTab):
+class ExampleScatterTab(DashboardTab):
     label='Example Scatter Plot'
     value='tab-2-example-graph'
+    plot_function=dp.ScatterPlot
+    graph_columns={'x':'sepal_width','y':'sepal_length'}
+    
     
     def __init__(self):
         super().__init__()
-        self.init_graph()
-        self.generate_tab()
+        
 
     def data_loader(self):
         import plotly.express as px
-        df = px.data.iris()
-        data = [dp.ScatterPlot(df,x_name="sepal_width",y_name="sepal_length")]
-        return data
-    
-    def init_graph(self):
-        self.graph = dp.Graph(id=self.label,
-                        data=self.data,
-                        top_margin=80).plot
-        
+        return px.data.iris()
 
 
 class ExampleDropDownTab(DropDownTab):
@@ -80,20 +65,15 @@ class ExampleDropDownTab(DropDownTab):
     
     options_column='country'
     start_value='Canada'
-    x_value='year'
-    y_value='pop'
+    graph_columns={'x':'year','y':'pop'}
     
     def __init__(self):
         super().__init__()
-        self.init_global_vars()
-        self.generate_tab()
-
 
     
-class ExampleTableTab(CallbackTab):
+class ExampleTableTab(TableTab):
     label='Example Data Table'
     value='tab-1-example-dataframe'
-
     csv_path=DATA_DIR / "example_table.csv"
     table_columns=['State',
                         "Number of Solar Plants",
@@ -102,11 +82,6 @@ class ExampleTableTab(CallbackTab):
     
     def __init__(self):
         super().__init__()
-        self.graph=dp.DataTable(self.value,
-                                self.data,
-                                columns=self.table_columns
-                                ).table
-        self.generate_tab()
         
     
 class ExampleMultiTab(MultiTab):

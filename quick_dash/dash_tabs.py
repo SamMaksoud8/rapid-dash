@@ -9,45 +9,107 @@ import os
 from pathlib import Path
 import plotly.express as px
 from typing import Any, Type, Dict, List, Union,Optional
-from abc import ABC
+from abc import ABC,abstractclassmethod,abstractmethod
+
 cache = {}
 
-#Base classes for all tabs
-class CallbackTab(ABC):
-    """Represents a generic callback tab for the dashboard.
+class BaseTab(object):
+    
+    @property
+    def sync_type(self) -> str:
+        return 'static'
+    
+    @property
+    @abstractclassmethod
+    def tab(cls) -> html.Div:
+        """Defines the tab. This method is intended to be implemented by subclasses."""
+        pass
+    
+    @property
+    @abstractclassmethod
+    def label(cls) -> str:
+        """Label for the tab. Must be unique. This method is intended to be implemented by subclasses."""
+        pass
+    
+    @property
+    @abstractclassmethod
+    def value(cls) -> str:
+        """ Defines html value attribute for the tab. Must be unique. This method is intended to be implemented by subclasses."""
+        pass
+    
+    @abstractmethod
+    def generate_tab(self) -> html.Div:
+        """Generates the div for the tab. This method is intended to be implemented by subclasses."""
+        pass
+
+
+class SingleTAB(BaseTab):
+    """Represents a generic single tab for the dashboard.
 
     Attributes:
-        sync_type (str): SyncType for the tab.
-        label (Optional[str]): Label for the tab. Must be unique.
-        value (Optional[str]): Defines html value attribute for the tab. Must be unique.
         style (Dict[str, str]): Defines the style for the tab.
-        cached_data (Optional[pd.DataFrame]): Defines the data for the tab.
-        graph (Optional[dcc.Graph]): Defines the graph for the tab.
+        cached_data (Union[pd.DataFrame,Any]): Defines the data for the tab.
+        graph (dcc.Graph): Defines the graph for the tab.
         children (List[Union[html.Div, dcc.Graph]]): Defines the children for the tab.
-        csv_path (Optional[str]): Defines the csv path to load the data for the tab.
         tab (html.Div): Defines the tab.
         top_margin (int): Defines the top margin for the graph.
-        graph_columns (List[Dict[str, Optional[str]]]): Defines the x,y values for the graph as list of dicts.
+        graph_columns (Union[List[Dict[str, str]],Dict[str,str]]): Defines the x,y values for the graph as dict or list of dicts.
     """
     
     sync_type: str = 'static'
-    label: Optional[str] = None 
-    value: Optional[str] = None 
     style: Dict[str, str] = {'width': '100%'}
-    cached_data: Optional[Union[pd.DataFrame,Any]] = None
-    graph: Optional[dcc.Graph] = None
     children: List[Union[html.Div, dcc.Graph]] = []
-    csv_path: Optional[str] = None
-    tab: html.Div = None
     top_margin: int = 80
-    graph_columns: List[Dict[str, Optional[str]]] = [{'x': None, 'y': None}]
+    tab: Optional[html.Div] = None
+    cached_data : Union[pd.DataFrame,Any] = None
     
     def __init__(self):
+        self.init_tab()
+    
+    @property
+    @abstractclassmethod
+    def label(cls) -> str:
+        """Label for the tab. Must be unique. This method is intended to be implemented by subclasses."""
+        pass
+    
+    @property
+    @abstractclassmethod
+    def value(cls) -> str:
+        """ Defines html value attribute for the tab. Must be unique. This method is intended to be implemented by subclasses."""
+        pass
+    
+    @property
+    @abstractclassmethod
+    def graph(cls) -> dcc.Graph:
+        """Defines the graph for the tab. This method is intended to be implemented by subclasses."""
+        pass
+    
+    @property
+    @abstractclassmethod
+    def graph_columns(cls) -> Union[List[Dict[str, str]],Dict[str,str]]:
+        """Defines the x,y column names for the graph as dicts or list of dicts.
+        For example a pd.DataFrame, df, with columns ['disease','lifespan'] should have a property
+        graph columns = [{'x':'disease','y':'lifespan'}] to plot the disease on the x-axis and the lifespan on the y-axis.
+        """
+        pass
+    
+    @abstractmethod
+    def data_loader(self)->Any:
+        """Loads the data for the tab. This method is intended to be implemented by subclasses.
+        """
+        pass
+       
+    @abstractmethod 
+    def init_tab(self):
+        """
+        Initializes the tab by setting up the plot and generating the tab.
+        This method is intended to be implemented by subclasses.
+        """
         pass
     
     def generate_tab(self) -> html.Div:
         """
-        Generate the tab for the CallbackTab object.
+        Generate the tab for the DashboardTab object.
 
         Returns:
             html.Div: The generated tab with the label and graph.
@@ -57,25 +119,39 @@ class CallbackTab(ABC):
         ], style=self.style)
         return self.tab
    
-
     @property
     def data(self) -> Any:
         """
-        Getter method for the `data` property of the CallbackTab. If the `cached_data` attribute is None, 
+        Getter method for the `data` property of the DashboardTab. If the `cached_data` attribute is None, 
         the `data_loader()` method is called to load the data, and the result is saved in `cached_data`. 
         The cached data is returned.
 
         Returns:
         -------
         Any:
-            The cached data for the CallbackTab.
+            The cached data for the DashboardTab.
         """
         if self.cached_data is None:
             self.cached_data=self.data_loader()
         return self.cached_data
-
+ 
+ 
+class DashboardTab(SingleTAB):
+    graph=None
+    def __init__(self):
+        super().__init__()
     
-    def data_loader(self) -> pd.DataFrame:
+    @property
+    def plot_function(cls) -> dp.SubPlot:
+        """Defines the SubPlot function for the Tab. This method is intended to be implemented by subclasses."""
+        raise ValueError("plot_function must be defined in subclass to use default init_graph method.")
+        
+    @property
+    def csv_path(cls) -> str:
+        """Defines the csv path to load the data for the tab. This method is intended to be implemented by subclasses."""
+        raise ValueError("csv_path must be defined in subclass to use default DashboardTab data_loader method.")
+    
+    def csv_loader(self) -> pd.DataFrame:
         """
         Load data from CSV file and return as a pandas DataFrame.
         
@@ -84,32 +160,68 @@ class CallbackTab(ABC):
         """
         return pd.read_csv(self.csv_path)
 
- 
-class DropDownTab(CallbackTab):
-    """
-    Class for defining a tab with a dropdown menu.
+    def data_loader(self) -> pd.DataFrame:
+        """
+        Load data from CSV file and return as a pandas DataFrame.
+        
+        Returns:
+            pd.DataFrame: A pandas DataFrame with data from the specified CSV file.
+        """
+        return self.csv_loader()
 
-    Attributes:
-    -----------
-    graph_id: Optional[str]
-        Defines the ID for the graph.
-    dropdown_id: Optional[str]
-        Defines the ID that stores the current selection of the dropdown.
-    start_value: Optional[Union[str, int]]
-        Defines the start value for the dropdown.
-    options_column: Optional[str]
-        Defines the column name for the options.
-    """
+    def init_graph(self)->None:
+        """
+        Initializes the graph with the data from the csv file.
 
+        Returns:
+            None
+        """
+        graph_data=[]
+        if isinstance(self.graph_columns,dict):
+            self.graph_columns=[self.graph_columns]
+        for column in self.graph_columns:
+            graph_data.append(self.plot_function(self.data,column['x'],column['y']))
+        self.graph=dp.Graph(id=self.label,data=graph_data,top_margin=self.top_margin).plot
+  
+    def init_tab(self):
+        self.init_graph()
+        self.generate_tab()
+  
+
+class TableTab(DashboardTab):
+    
+    @property
+    def graph_columns(self)->None:
+        print("graph_columns not required for TableTab")
+        return None
+
+    @property
+    @abstractclassmethod
+    def table_columns(cls) -> List[str]:
+        """Defines the list of columns to include in the data table. This method is intended to be implemented by subclasses."""
+        pass
+
+    def init_graph(self) -> None:
+        self.graph= dp.DataTable(self.value,
+                            self.data,
+                            columns=self.table_columns
+                            ).table
+  
+
+class DropDownTab(DashboardTab):
     graph_id: Optional[str] = None
     dropdown_id: Optional[str] = None
     start_value: Optional[Union[str, int]] = None
     options_column: Optional[str] = None
-
     
     def __init__(self):
-        CallbackTab.__init__(self)
-    
+        super().__init__()
+
+    @property
+    def graph_columns(self)->None:
+        print("graph_columns not required for DropDownTab")
+        return None
+
     @property
     def options(self) -> pd.Series:
         """Return the unique options for the dropdown."""
@@ -123,10 +235,22 @@ class DropDownTab(CallbackTab):
                             self.start_value, 
                             id=self.dropdown_id)
     
+
+    def init_tab(self) -> None:
+        """
+        Initializes the tab by setting up the global variables and generating the tab.
+
+        Returns:
+            None
+        """
+        self.data_loader()
+        self.init_global_vars()
+        self.generate_tab()
+
     def init_global_vars(self)->None:
-        """Initializes the global variables for caching data."""
         global cache
-        cache[self.label]=self.data
+        cache[self.label] = self.data
+        
 
     def generate_tab(self) -> html.Div:
         """
@@ -166,36 +290,30 @@ class DropDownTab(CallbackTab):
         options_column = cls.options_column
         df=cache[cls.label]
         dff = df[df[options_column]==value]
-        return px.line(dff, x=cls.x_value, y=cls.y_value)
+        return px.line(dff, x=cls.graph_columns['x'], y=cls.graph_columns['y'])
 
-class MultiTab(CallbackTab):
-    """
-    Class for creating multiple tabs with the same layout.
 
-    Parameters
-    ----------
-    tab_list : list
-        A list of tab labels that will be used to create the tabs.
+class MultiTab(BaseTab):
+    flex_style: Dict[str, str] = {'display': 'flex', 'flex-direction': 'row','width': '100%'}
+    tab: Optional[html.Div] = None
 
-    Attributes
-    ----------
-    style : dict
-        A dictionary of CSS styles for the tab.
-    """
-
-    def __init__(self, tab_list: List[CallbackTab]):
+    def __init__(self, tab_list: List[DashboardTab]):
         """
         Initializes a new instance of the `MultiTab` class.
 
         Parameters
         ----------
         tab_list : list
-            A list of tab labels (subclasses of CallbackTab) that will be used to create the tabs.
+            A list of tab labels (subclasses of DashboardTab) that will be used to create the tabs.
         """
-        super().__init__()
-        self.style = {'width': '10%'}
+        #super().__init__()
         self.generate_tab(tab_list)
 
+    @property
+    @abstractclassmethod
+    def tab_list(cls) -> List[DashboardTab]:
+        """Defines the list of tabs to create. This method is intended to be implemented by subclasses."""
+        pass
 
     def flex_row(self, data: List[Union[dcc.Graph, html.Div]]) -> html.Div:
         """
@@ -217,17 +335,17 @@ class MultiTab(CallbackTab):
             return html.Div(data)
         else:
             return html.Div(data,
-                    style={'display': 'flex', 'flex-direction': 'row','width': '100%'})
+                    style=self.flex_style)
         
 
-    def generate_tab(self, tab_list: List[CallbackTab]):
+    def generate_tab(self, tab_list: List[DashboardTab])-> html.Div:
         """
         Generates the layout of the `MultiTab` instance as a `html.Div`.
         
         Parameters:
         -----------
-        tab_list : List[CallbackTab]
-            A list of `CallbackTab` instances to be displayed in a multi-tab format.
+        tab_list : List[DashboardTab]
+            A list of `DashboardTab` instances to be displayed in a multi-tab format.
             
         Returns:
         --------
@@ -238,6 +356,7 @@ class MultiTab(CallbackTab):
         chunks = [data[i:i+2] for i in range(0, len(data), 2)]
         children=[self.flex_row(i) for i in chunks]
         self.tab = html.Div(className='row', children=children)
-
+        return self.tab
+    
 
 

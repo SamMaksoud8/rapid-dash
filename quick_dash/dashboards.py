@@ -5,10 +5,13 @@ import plotly.graph_objs as go
 import pandas as pd
 import custom_tabs as ct
 import dash_tabs as dt
+import dash_plots as dp
 import datetime
 from typing import Any, Type, Dict, List, Union
-
-
+from abc import ABC,abstractclassmethod
+import yaml
+import re
+import copy
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 class Dashboard:
@@ -21,10 +24,8 @@ class Dashboard:
         The title of the dashboard, displayed as an <h1> tag.
     tabs_value : str or None
         The ID of the dash `Tabs` component. This attribute is set in the subclass and is used to identify which tab is currently active.
-    tabs : List[dt.CallbackTab]
-        A list of the `dt.CallbackTab` subclasses that make up the content of the dashboard.
-    starting_tab : str or None
-        The value of the starting tab. If None, the first tab in the `tabs` attribute will be selected by default.
+    tabs : List[dt.DashboardTab]
+        A list of the `dt.DashboardTab` subclasses that make up the content of the dashboard.
     div_id : str or None
         The ID of the <div> tag where the content of the selected tab is rendered.
     resync_interval_minutes : int
@@ -38,12 +39,6 @@ class Dashboard:
     init_store_data : dict
         The initial data for the `Store` component.
     """
-    
-    h1_title: Union[str, None] = None
-    tabs_value: Union[str, None] = None
-    tabs: List[dt.CallbackTab] = []
-    starting_tab: Union[str, None] = None
-    div_id: Union[str, None] = None
     resync_interval_minutes: int = 15
     n_intervals: int = 0
     interval_id: str = 'interval-component'
@@ -58,6 +53,37 @@ class Dashboard:
         self.init_store()
         self.set_update_interval()
         self.init_layout()
+
+    @abstractclassmethod
+    def h1_title(cls) -> str:
+        """
+        The title of the dashboard, displayed as an <h1> tag.
+        """
+        pass
+
+    @abstractclassmethod
+    def tabs_value(cls) -> str:
+        """
+        The ID of the dash `Tabs` component. This attribute is set in the subclass and is used to identify which tab is currently active.
+        """
+        pass
+    
+    @abstractclassmethod
+    def tabs(cls) -> List[dt.DashboardTab]:
+        """
+        A list of the `dt.DashboardTab` subclasses that make up the content of the dashboard.
+        """
+        pass
+    
+    @abstractclassmethod
+    def div_id(cls) -> str:
+        """
+        The ID of the <div> tag where the content of the selected tab is rendered.
+        """
+        pass
+    
+
+
 
     def init_store(self) -> None:
         """
@@ -165,7 +191,7 @@ class Dashboard:
             children.append(dcc.Tab(label=tab.label, value=tab.value))
         return children
 
-    def get_tab_cls(self, tab: str) -> Type["dt.CallbackTab"]:
+    def get_tab_cls(self, tab: str) -> Type["dt.DashboardTab"]:
         """
         Get the class of the sync tab for the specified tab value.
 
@@ -173,7 +199,7 @@ class Dashboard:
             tab (str): The value of the tab.
 
         Returns:
-            Type["dt.CallbackTab"]: The class of the sync tab.
+            Type["dt.DashboardTab"]: The class of the sync tab.
         """
         for cls in self.tabs:
             if tab == cls.value:
@@ -197,7 +223,7 @@ class Dashboard:
             tab_cls = self.get_tab_cls(tab)
             store[tab] = tab_cls().tab
         else:
-            print('Saved time:', tab)
+            print(f'Data for {tab} retrieved from {self.store_id}')
 
         if interval > store['n_intervals']:
             tab_cls = self.get_tab_cls(tab)
@@ -272,4 +298,101 @@ class Dashboard:
             return store[tab], store
 
         app.run_server(debug=debug, port=port)
+        
 
+class ConfigureMethods(ABC):
+    @staticmethod 
+    def chart(tab):
+        cls=type('DashboardTab', dt.DashboardTab.__bases__, dict(dt.DashboardTab.__dict__))
+        cls.graph_columns = tab['graph_columns']
+        cls.plot_function=AutoDash.plot_map[tab['chart_type']]
+        return cls
+    
+    @staticmethod
+    def table(tab):
+        raise NotImplementedError("Dropdown tab is not ready yet for auto dashboard creation.")
+
+    @staticmethod
+    def dropdown(tab):
+        raise NotImplementedError("Dropdown tab is not ready yet for auto dashboard creation.")
+    
+    @staticmethod
+    def multi(tab):
+        raise NotImplementedError("Dropdown tab is not ready yet for auto dashboard creation.")
+
+class AutoDash(Dashboard):
+    plot_map = {
+        "bar": dp.BarPlot,
+        "line": dp.LinePlot,
+        "scatter": dp.ScatterPlot,
+        "scatter+line": dp.ScatterLinePlot,
+    }
+
+    def __init__(self):
+        super().__init__()
+    
+    
+    @staticmethod
+    def to_slug(string):
+        # convert to lowercase
+        string = string.lower()
+
+        # replace spaces with hyphens
+        string = re.sub(r'\s', '-', string)
+
+        # remove non-alphanumeric characters except hyphens and underscores
+        string = re.sub(r'[^a-z0-9-_]', '', string)
+
+        # remove multiple hyphens or underscores
+        string = re.sub(r'[-_]{2,}', '-', string)
+
+        # remove leading and trailing hyphens or underscores
+        string = string.strip('-_')
+
+        return string
+
+    @staticmethod
+    def load_yaml(yaml_file: str):
+        with open(yaml_file) as file:
+            try:
+                return yaml.safe_load(file)   
+            except yaml.YAMLError as exc:
+                print(exc)
+                raise Exception("Error loading yaml file")
+            
+        
+    @staticmethod
+    def infer_configuration_method(tab):
+        return getattr(ConfigureMethods, tab['type']) 
+    
+    @staticmethod
+    def infer_dashboard_class(cls,tab):
+        config_method = cls.infer_configuration_method(tab)
+        tab_cls = config_method(tab)
+        return tab_cls
+    
+    
+    @staticmethod
+    def configure_tab(cls,tab):
+        tab_cls=cls.infer_dashboard_class(cls,tab)
+        tab_cls.csv_path = tab['csv_path']
+        tab_cls.label=tab['label']
+        tab_cls.value=cls.to_slug(tab['label'])
+        print(tab_cls.value)
+        return tab_cls
+        
+    @staticmethod
+    def configure(cls,yaml_file: str):
+        yaml_ = cls.load_yaml(yaml_file)
+        cls.h1_title = yaml_['title']
+        cls.tabs_value = cls.to_slug(yaml_['title'])
+        cls.div_id = cls.to_slug(yaml_['title']+"-div")
+        cls.tabs=[cls.configure_tab(cls, tab) for tab in yaml_['tabs']]
+        print([i.plot_function for i in cls.tabs])
+        return cls
+
+    @staticmethod
+    def from_yaml(yaml_file: str):
+        
+        dashboard=AutoDash.configure(AutoDash,yaml_file)
+        return dashboard()
