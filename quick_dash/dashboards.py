@@ -7,7 +7,7 @@ import custom_tabs as ct
 import dash_tabs as dt
 import dash_plots as dp
 import datetime
-from typing import Any, Type, Dict, List, Union
+from typing import Any, Type, Dict, List, Union,Optional
 from abc import ABC,abstractclassmethod
 import yaml
 import re
@@ -24,11 +24,11 @@ class Dashboard:
         The title of the dashboard, displayed as an <h1> tag.
     tabs_value : str or None
         The ID of the dash `Tabs` component. This attribute is set in the subclass and is used to identify which tab is currently active.
-    tabs : List[dt.DashboardTab]
+    tabs : List[dt.BaseTab]
         A list of the `dt.DashboardTab` subclasses that make up the content of the dashboard.
     div_id : str or None
         The ID of the <div> tag where the content of the selected tab is rendered.
-    resync_interval_minutes : int
+    resync_interval_minutes : Optional[int]
         The interval, in minutes, at which dynamic tabs should be reloaded.
     n_intervals : int
         The number of times the `Interval` component has triggered since the app started.
@@ -39,17 +39,32 @@ class Dashboard:
     init_store_data : dict
         The initial data for the `Store` component.
     """
-    resync_interval_minutes: int = 15
-    n_intervals: int = 0
-    interval_id: str = 'interval-component'
-    store_id: str = 'tab-data'
-    init_store_data: dict = {'n_intervals': 0}
     
     
-    def __init__(self) -> None:
-        """
-        Initialize the `Dashboard` class. Sets up the `Store` component, the update interval, and the layout of the dashboard.
-        """
+    
+ 
+    
+    def __init__(self,h1_title: str,tabs_value:str,div_id:str,tabs:List[dt.BaseTab],resync_interval_minutes: int = 15,n_intervals: int = 0,interval_id: str = 'interval-component',store_id: str = 'tab-data',init_store_data: dict = {'n_intervals': 0}) -> None:
+        self.tabs=tabs
+        self.div_id=div_id
+        self.tabs_value=tabs_value
+        self.h1_title=h1_title
+        self.tabs = self.init_tabs(tabs)
+        
+        self.resync_interval_minutes=resync_interval_minutes
+        self.n_intervals=n_intervals
+        self.interval_id=interval_id
+        self.store_id=store_id
+        self.init_store_data=init_store_data
+        self.interval=None
+        self.setup_dashboard()
+        
+    
+    def init_tabs(self,tabs):
+        return [i() for i in tabs]
+            
+        
+    def setup_dashboard(self):
         self.init_store()
         self.set_update_interval()
         self.init_layout()
@@ -82,8 +97,6 @@ class Dashboard:
         """
         pass
     
-
-
 
     def init_store(self) -> None:
         """
@@ -150,15 +163,15 @@ class Dashboard:
         """
         Initialize the layout of the dashboard with tabs and intervals.
         """
-        self.set_update_interval()
         children = self.get_tabs()
         self.layout = html.Div([
             html.H1(self.h1_title),
             dcc.Tabs(id=self.tabs_value, value=children[0].value,
                      children=children),
-            self.interval,
             self.store,
+            self.interval,
             html.Div(id=self.div_id)
+            
         ])
 
     @staticmethod
@@ -205,6 +218,13 @@ class Dashboard:
             if tab == cls.value:
                 return cls
         raise ValueError(f"Tab not found: {tab}")
+    
+    def init_tab(self,tab_cls):
+        if tab_cls.tab is None:
+            tab_cls.init_tab()
+        return tab_cls.tab
+        
+        
 
     def update_store(self, tab: str, store: Dict[str, Union[int, str]], interval: int) -> Dict[str, Union[int, str]]:
         """
@@ -221,13 +241,13 @@ class Dashboard:
         """
         if tab not in store.keys():
             tab_cls = self.get_tab_cls(tab)
-            store[tab] = tab_cls().tab
+            store[tab] = self.init_tab(tab_cls) #tab_cls().tab
         else:
             print(f'Data for {tab} retrieved from {self.store_id}')
 
         if interval > store['n_intervals']:
             tab_cls = self.get_tab_cls(tab)
-            store[tab] = tab_cls().tab
+            store[tab] = self.init_tab(tab_cls)
             store['n_intervals'] = interval
 
         return store

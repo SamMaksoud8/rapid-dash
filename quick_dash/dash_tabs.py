@@ -25,6 +25,11 @@ class BaseTab(object):
         """Defines the tab. This method is intended to be implemented by subclasses."""
         pass
     
+    @abstractclassmethod
+    def init_tab(self):
+        "Initializes the tab. This method is intended to be implemented by subclasses."
+        pass
+    
     @property
     @abstractclassmethod
     def label(cls) -> str:
@@ -64,7 +69,8 @@ class SingleTAB(BaseTab):
     cached_data : Union[pd.DataFrame,Any] = None
     
     def __init__(self):
-        self.init_tab()
+        pass
+        #self.init_tab()
     
     @property
     @abstractclassmethod
@@ -308,6 +314,7 @@ class MultiTab(BaseTab):
         """
         #super().__init__()
         self.generate_tab(tab_list)
+
 
     @property
     @abstractclassmethod

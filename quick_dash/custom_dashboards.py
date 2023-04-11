@@ -31,7 +31,10 @@ class ExampleDashboard(Dashboard):
             ct.ExampleScatterTab]
 
     def __init__(self)-> None:
-        super().__init__()
+        super().__init__(h1_title=self.h1_title,
+                           tabs_value=self.tabs_value,
+                           div_id=self.div_id,
+                           tabs=self.tabs)
 
 
 class ExampleDropDownDashboard(Dashboard):
@@ -53,7 +56,10 @@ class ExampleDropDownDashboard(Dashboard):
             ct.ExampleScatterTab]
 
     def __init__(self)-> None:
-        Dashboard.__init__(self)
+        super().__init__(self,h1_title=self.h1_title,
+                           tabs_value=self.tabs_value,
+                           div_id=self.div_id,
+                           tabs=self.tabs)
 
     #Add a callback to update the dropdown options when the dropdown tab is selected.
     @callback(
